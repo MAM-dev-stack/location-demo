@@ -13,7 +13,12 @@ app.use(express.static('public')); // مسیر استاتیک برای پوشه 
 
 // تنظیم هدر CSP برای مجاز کردن منابع خارجی
 app.use((req, res, next) => {
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;");
+  res.setHeader("Content-Security-Policy", 
+    "default-src 'self'; " + 
+    "script-src 'self' https://unpkg.com; " + 
+    "style-src 'self' https://fonts.googleapis.com; " + 
+    "font-src https://fonts.gstatic.com; " + 
+    "img-src 'self' https://*.tile.openstreetmap.org;"); // اضافه کردن OpenStreetMap به img-src
   next();
 });
 
