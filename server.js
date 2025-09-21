@@ -1,3 +1,5 @@
+// server.js
+// npm install express cors basic-auth helmet
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -11,14 +13,15 @@ app.use(express.json());
 app.use(cors()); // در تولید محدودش کن بر اساس origin
 app.use(express.static('public')); // مسیر استاتیک برای پوشه public
 
-// تنظیم هدر CSP برای مجاز کردن منابع خارجی
+// تنظیم هدر CSP برای مجاز کردن منابع خارجی و نقشه‌ها و آیکون‌های Leaflet
 app.use((req, res, next) => {
-  res.setHeader("Content-Security-Policy", 
-    "default-src 'self'; " + 
-    "script-src 'self' https://unpkg.com; " + 
-    "style-src 'self' https://fonts.googleapis.com; " + 
-    "font-src https://fonts.gstatic.com; " + 
-    "img-src 'self' https://*.tile.openstreetmap.org;"); // اضافه کردن OpenStreetMap به img-src
+  res.setHeader("Content-Security-Policy", `
+    default-src 'self';
+    script-src 'self' https://unpkg.com;
+    style-src 'self' https://fonts.googleapis.com;
+    font-src https://fonts.gstatic.com;
+    img-src 'self' https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://unpkg.com;
+  `);
   next();
 });
 
