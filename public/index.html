@@ -6,17 +6,58 @@
   <title>کدیاب پستی — پیدا کردن خدمات نزدیک</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
-    html,body{height:100%;margin:0;font-family:system-ui, Roboto, Arial;}
-    #map{height:100vh}
-    .loc-panel{position:absolute;right:16px;top:16px;z-index:1200;background:#fff;padding:14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12);min-width:260px}
-    .btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600;margin:6px}
-    .btn-allow{background:#16a34a;color:#fff}
-    .btn-deny{background:#ef4444;color:#fff}
-    .note{font-size:13px;color:#555;margin-top:8px}
-    @media (max-width:480px){ .loc-panel{left:8px;right:8px;top:auto;bottom:16px} }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, Roboto, Arial;
+    }
+    #map {
+      height: 100vh;
+    }
+    .loc-panel {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      z-index: 1200;
+      background: #fff;
+      padding: 14px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
+      min-width: 260px;
+    }
+    .btn {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 6px;
+    }
+    .btn-allow {
+      background: #16a34a;
+      color: #fff;
+    }
+    .btn-deny {
+      background: #ef4444;
+      color: #fff;
+    }
+    .note {
+      font-size: 13px;
+      color: #555;
+      margin-top: 8px;
+    }
+    @media (max-width: 480px) {
+      .loc-panel {
+        left: 8px;
+        right: 8px;
+        top: auto;
+        bottom: 16px;
+      }
+    }
   </style>
 </head>
 <body>
+
   <div id="map"></div>
 
   <div class="loc-panel" id="locPanel" role="dialog" aria-live="polite">
@@ -27,7 +68,61 @@
     <div class="note" id="statusText"></div>
   </div>
 
-  <!-- لینک به فایل جاوااسکریپت -->
-  <script src="app.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // کد جاوااسکریپت مربوط به نقشه و موقعیت یابی
+    const map = L.map('map').setView([35.7, 51.4], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let userMarker, accuracyCircle;
+    const locPanel = document.getElementById('locPanel');
+    const statusText = document.getElementById('statusText');
+    
+    // نمایش وضعیت موقعیت
+    function showStatus(t) {
+      statusText.textContent = t;
+    }
+
+    function sendLocation(lat, lon, acc) {
+      // ارسال موقعیت به سرور
+      console.log('Sending location:', lat, lon, acc);
+      // شما می‌تونید اینجا درخواست ارسال به سرور خودتون رو اضافه کنید
+    }
+
+    // موفقیت در دریافت موقعیت
+    function handleSuccess(pos) {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude, acc = pos.coords.accuracy;
+      if (userMarker) userMarker.remove();
+      if (accuracyCircle) accuracyCircle.remove();
+      userMarker = L.marker([lat, lon]).addTo(map).bindPopup('شما اینجا هستید').openPopup();
+      accuracyCircle = L.circle([lat, lon], { radius: acc }).addTo(map);
+      map.setView([lat, lon], 14, { animate: true });
+      showStatus('موقعیت پیدا شد — دقت: ' + Math.round(acc) + ' متر');
+      sendLocation(lat, lon, acc);
+      setTimeout(() => locPanel.style.display = 'none', 700);
+    }
+
+    // خطا در دریافت موقعیت
+    function handleError(err) {
+      console.warn(err);
+      showStatus('خطا در دریافت موقعیت.');
+      setTimeout(() => locPanel.style.display = 'none', 1500);
+    }
+
+    // درخواست موقعیت
+    document.getElementById('allowBtn').addEventListener('click', () => {
+      if (!('geolocation' in navigator)) {
+        showStatus('مرورگر شما از Geolocation پشتیبانی نمی‌کند.');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError, { enableHighAccuracy: true, timeout: 10000 });
+    });
+
+    document.getElementById('denyBtn').addEventListener('click', () => {
+      showStatus('بدون دسترسی هم می‌توانید ادامه دهید.');
+      setTimeout(() => locPanel.style.display = 'none', 800);
+    });
+  </script>
+
 </body>
 </html>
