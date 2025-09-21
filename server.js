@@ -1,102 +1,117 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const basicAuth = require('basic-auth');
+const jwt = require('jsonwebtoken'); // JWT برای احراز هویت
 const helmet = require('helmet');
 const cors = require('cors');
+const mongoose = require('mongoose');
+
+// ایجاد اتصال به پایگاه داده MongoDB
+mongoose.connect('mongodb://localhost/kodiab', { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// تعریف مدل برای موقعیت
+const Location = mongoose.model('Location', new mongoose.Schema({
+  lat: Number,
+  lon: Number,
+  accuracy: Number,
+  ts: String,
+  ua: String,
+  ip: String
+}));
 
 const app = express();
-app.use(helmet());
+app.use(helmet()); // امنیت بیشتر
 app.use(express.json());
 app.use(cors()); // در تولید محدودش کن بر اساس origin
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-const DATA_FILE = path.join(__dirname, 'locations.json');
-let locations = [];
-try {
-  const raw = fs.readFileSync(DATA_FILE, 'utf8');
-  locations = raw ? JSON.parse(raw) : [];
-} catch (e) {
-  locations = [];
-}
+// توکن JWT را برای احراز هویت بررسی می‌کنیم
+const SECRET_KEY = 'your_secret_key'; // باید این کلید را امن نگه دارید
 
-function saveToDisk() {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(locations, null, 2));
-  } catch (e) {
-    console.error('Error saving locations:', e);
+function verifyToken(req, res, next) {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
+  
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(400).json({ error: 'Invalid token.' });
+    }
+    req.user = decoded; // ذخیره اطلاعات کاربر در درخواست
+    next();
+  });
 }
 
-// Helper: sanitize minimal fields for responses
-function sanitizeEntry(e) {
-  return {
-    id: e.id,
-    lat: e.lat,
-    lon: e.lon,
-    accuracy: e.accuracy,
-    ts: e.ts
-  };
-}
+// ثبت نام و ورود به سیستم با JWT
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  // برای نمونه: اعتبارسنجی ساده برای کاربر و پسورد
+  if (username === 'admin' && password === 'password') {
+    const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+    res.json({ token });
+  } else {
+    res.status(400).json({ error: 'Invalid credentials' });
+  }
+});
 
-// PUBLIC API: receive location (must be sent only after explicit consent on client)
-app.post('/api/location', (req, res) => {
-  const { lat, lon, accuracy, ts, consentToken } = req.body || {};
+// دریافت موقعیت از کاربر و ذخیره در MongoDB
+app.post('/api/location', verifyToken, async (req, res) => {
+  const { lat, lon, accuracy, ts } = req.body;
 
-  // Basic safety checks
+  // اعتبارسنجی داده‌ها
   if (typeof lat !== 'number' || typeof lon !== 'number') {
     return res.status(400).json({ ok: false, error: 'bad_payload' });
   }
 
-  // Optionally check a consent token or flag from client if you implement one.
-  // Here we just trust client indicates consent; production: validate session/auth + server-side consent record.
-  const entry = {
-    id: Date.now() + '-' + Math.floor(Math.random() * 10000),
+  const entry = new Location({
     lat,
     lon,
     accuracy: typeof accuracy === 'number' ? accuracy : null,
     ts: ts || new Date().toISOString(),
     ua: req.get('User-Agent') || '',
     ip: req.ip || req.connection.remoteAddress
-  };
+  });
 
-  locations.push(entry);
-  saveToDisk();
-
-  res.status(201).json({ ok: true, id: entry.id });
+  try {
+    await entry.save();
+    res.status(201).json({ ok: true, id: entry._id });
+  } catch (e) {
+    console.error('Error saving location:', e);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
 });
 
-// PUBLIC API: delete all locations for a user id (client must supply id or token). For demo we allow deleting by id list or by matching ip (very naive).
-app.post('/api/delete-my-locations', (req, res) => {
-  const { ids } = req.body || {};
+// حذف موقعیت‌های کاربر از طریق شناسه
+app.post('/api/delete-my-locations', verifyToken, async (req, res) => {
+  const { ids } = req.body;
   if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids_required' });
 
-  const before = locations.length;
-  locations = locations.filter(l => !ids.includes(l.id));
-  saveToDisk();
-  res.json({ ok: true, removed: before - locations.length });
-});
-
-// ADMIN AUTH (very simple). In production use env vars and real auth (sessions/JWT/OAuth).
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASS = process.env.ADMIN_PASS || 'changeme';
-
-function requireAdmin(req, res, next) {
-  const user = basicAuth(req);
-  if (!user || user.name !== ADMIN_USER || user.pass !== ADMIN_PASS) {
-    res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
-    return res.status(401).send('Unauthorized');
+  try {
+    const deleted = await Location.deleteMany({ _id: { $in: ids } });
+    res.json({ ok: true, removed: deleted.deletedCount });
+  } catch (e) {
+    console.error('Error deleting locations:', e);
+    res.status(500).json({ ok: false, error: 'server_error' });
   }
-  next();
-}
-
-// Admin: return all locations (admin-only)
-app.get('/admin/locations', requireAdmin, (req, res) => {
-  res.json(locations);
 });
 
-// Admin page (static file in public/admin.html) served with requireAdmin check by route wrapper
-app.get('/admin', requireAdmin, (req, res) => {
+// مسیر مدیریت فقط برای ادمین
+app.get('/admin/locations', verifyToken, (req, res) => {
+  if (req.user.username !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  Location.find()
+    .then(locations => res.json(locations))
+    .catch(err => res.status(500).json({ error: 'Failed to fetch locations' }));
+});
+
+// صفحه مدیریت
+app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
