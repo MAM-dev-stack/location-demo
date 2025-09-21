@@ -4,23 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>کدیاب پستی — پیدا کردن خدمات نزدیک</title>
-  
-<!-- لینک به فایل CSS Leaflet -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-<!-- لینک به فایل JS Leaflet -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- لینک به فایل CSS Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-  <!-- لینک به فایل CSS -->
-  <link href="style.css" rel="stylesheet" />
-  
+  <!-- لینک به فایل CSS برای فونت -->
   <link href="https://fonts.googleapis.com/css2?family=Vazir&display=swap" rel="stylesheet">
-  <style>
-    /* شما می‌توانید CSS داخلی هم بنویسید، ولی بهتر است که از فایل جداگانه استفاده کنید */
-  </style>
+
+  <!-- لینک به فایل CSS سفارشی -->
+  <link href="style.css" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
+  
   <div class="loc-panel" id="locPanel" role="dialog" aria-live="polite">
     <h3>کدیاب پستی</h3>
     <p>برای ادامه ارائه خدمات (نمایش نزدیک‌ترین کدپستی و سرویس‌ها)، لطفاً دسترسی موقعیت را بدهید.</p>
@@ -29,6 +25,10 @@
     <div class="note" id="statusText"></div>
   </div>
 
+  <!-- فایل JS Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- فایل JS مخصوص شما -->
   <script src="app.js"></script>
 </body>
 </html>
