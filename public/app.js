@@ -1,6 +1,6 @@
 const SERVER_BASE = ''; // اگر اپ در همان دامنه باشه خالی بذار
+const map = L.map('map').setView([35.7, 51.4], 5); // موقعیت اولیه نقشه
 
-const map = L.map('map').setView([35.7, 51.4], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 const locPanel = document.getElementById('locPanel');
@@ -35,9 +35,15 @@ async function sendLocation(lat, lon, acc) {
 
 function handleSuccess(pos) {
   const lat = pos.coords.latitude, lon = pos.coords.longitude, acc = pos.coords.accuracy;
+  
   if (userMarker) userMarker.remove();
   if (accuracyCircle) accuracyCircle.remove();
-  userMarker = L.marker([lat, lon]).addTo(map).bindPopup('شما اینجا هستید').openPopup();
+  
+  // ایجاد نشانگر با آیکون پیش‌فرض
+  userMarker = L.marker([lat, lon]).addTo(map)
+    .bindPopup('شما اینجا هستید')
+    .openPopup();
+  
   accuracyCircle = L.circle([lat, lon], { radius: acc }).addTo(map);
   map.setView([lat, lon], 14, { animate: true });
   showStatus('موقعیت پیدا شد — دقت: ' + Math.round(acc) + ' متر');
