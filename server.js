@@ -1,5 +1,3 @@
-// server.js
-// npm install express cors basic-auth helmet
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -38,7 +36,6 @@ function sanitizeEntry(e) {
     lon: e.lon,
     accuracy: e.accuracy,
     ts: e.ts
-    // ip/ua intentionally withheld from public endpoints; admin endpoint returns more
   };
 }
 
@@ -69,10 +66,8 @@ app.post('/api/location', (req, res) => {
   res.status(201).json({ ok: true, id: entry.id });
 });
 
-// PUBLIC API: delete all locations for a user id (client must supply id or token).
-// For demo we allow deleting by id list or by matching ip (very naive).
+// PUBLIC API: delete all locations for a user id (client must supply id or token). For demo we allow deleting by id list or by matching ip (very naive).
 app.post('/api/delete-my-locations', (req, res) => {
-  // Expect array of ids to delete (client-driven). In production verify user's identity.
   const { ids } = req.body || {};
   if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids_required' });
 
@@ -97,7 +92,6 @@ function requireAdmin(req, res, next) {
 
 // Admin: return all locations (admin-only)
 app.get('/admin/locations', requireAdmin, (req, res) => {
-  // Return fuller info to admin (including ip/ua)
   res.json(locations);
 });
 
@@ -106,7 +100,7 @@ app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Health
+// Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;
