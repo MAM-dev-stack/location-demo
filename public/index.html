@@ -8,13 +8,66 @@
   <!-- لینک به فایل CSS Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-  <!-- لینک به فایل CSS برای فونت -->
-  <link href="https://fonts.googleapis.com/css2?family=Vazir&display=swap" rel="stylesheet">
+  <!-- لینک به فایل JS Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- لینک به فایل CSS سفارشی -->
+  <!-- لینک به فایل CSS -->
   <link href="style.css" rel="stylesheet" />
+  
+  <link href="https://fonts.googleapis.com/css2?family=Vazir&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, Roboto, Arial;
+    }
+    #map {
+      height: 100vh;
+    }
+    .loc-panel {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      z-index: 1200;
+      background: #fff;
+      padding: 14px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
+      min-width: 260px;
+    }
+    .btn {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 6px;
+    }
+    .btn-allow {
+      background: #16a34a;
+      color: #fff;
+    }
+    .btn-deny {
+      background: #ef4444;
+      color: #fff;
+    }
+    .note {
+      font-size: 13px;
+      color: #555;
+      margin-top: 8px;
+    }
+    @media (max-width: 480px) {
+      .loc-panel {
+        left: 8px;
+        right: 8px;
+        top: auto;
+        bottom: 16px;
+      }
+    }
+  </style>
 </head>
 <body>
+
   <div id="map"></div>
   
   <div class="loc-panel" id="locPanel" role="dialog" aria-live="polite">
@@ -25,10 +78,6 @@
     <div class="note" id="statusText"></div>
   </div>
 
-  <!-- فایل JS Leaflet -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- فایل JS مخصوص شما -->
   <script src="app.js"></script>
 </body>
 </html>
