@@ -1,53 +1,91 @@
 // server.js
-// npm init -y
-// npm i express basic-auth
+// npm install express cors basic-auth helmet
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const basicAuth = require('basic-auth');
+const helmet = require('helmet');
+const cors = require('cors');
 
 const app = express();
+app.use(helmet());
 app.use(express.json());
+app.use(cors()); // در تولید محدودش کن بر اساس origin
 app.use(express.static('public'));
 
 const DATA_FILE = path.join(__dirname, 'locations.json');
 let locations = [];
-try { 
-  locations = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8') || '[]'); 
-} catch (e) { 
-  locations = []; 
+try {
+  const raw = fs.readFileSync(DATA_FILE, 'utf8');
+  locations = raw ? JSON.parse(raw) : [];
+} catch (e) {
+  locations = [];
 }
 
-function save() { 
-  fs.writeFileSync(DATA_FILE, JSON.stringify(locations, null, 2)); 
+function saveToDisk() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(locations, null, 2));
+  } catch (e) {
+    console.error('Error saving locations:', e);
+  }
 }
 
-// POST /api/location  -- ذخیره‌ی لوکیشن با رضایت کاربر
+// Helper: sanitize minimal fields for responses
+function sanitizeEntry(e) {
+  return {
+    id: e.id,
+    lat: e.lat,
+    lon: e.lon,
+    accuracy: e.accuracy,
+    ts: e.ts
+    // ip/ua intentionally withheld from public endpoints; admin endpoint returns more
+  };
+}
+
+// PUBLIC API: receive location (must be sent only after explicit consent on client)
 app.post('/api/location', (req, res) => {
-  const { lat, lon, accuracy, ts } = req.body || {};
-  if (typeof lat !== 'number' || typeof lon !== 'number') return res.status(400).send('bad payload');
-  
+  const { lat, lon, accuracy, ts, consentToken } = req.body || {};
+
+  // Basic safety checks
+  if (typeof lat !== 'number' || typeof lon !== 'number') {
+    return res.status(400).json({ ok: false, error: 'bad_payload' });
+  }
+
+  // Optionally check a consent token or flag from client if you implement one.
+  // Here we just trust client indicates consent; production: validate session/auth + server-side consent record.
   const entry = {
     id: Date.now() + '-' + Math.floor(Math.random() * 10000),
-    lat, lon, accuracy: accuracy || null, ts: ts || new Date().toISOString(),
-    ua: req.get('User-Agent') || '', ip: req.ip
+    lat,
+    lon,
+    accuracy: typeof accuracy === 'number' ? accuracy : null,
+    ts: ts || new Date().toISOString(),
+    ua: req.get('User-Agent') || '',
+    ip: req.ip || req.connection.remoteAddress
   };
-  
+
   locations.push(entry);
-  save();
+  saveToDisk();
+
   res.status(201).json({ ok: true, id: entry.id });
 });
 
-// POST /api/optout   -- اگر کاربر می‌خواد لغو کنه (یا از سمت frontend فراخوانی شه)
-app.post('/api/optout', (req, res) => {
-  // در اپ واقعی باید شناسهٔ کاربر یا session داشته باشی؛ اینجا دموست
-  // می‌تونی بر اساس ip یا توکن حذف/flag کنی
-  res.json({ ok: true, msg: 'opt-out recorded (demo)' });
+// PUBLIC API: delete all locations for a user id (client must supply id or token).
+// For demo we allow deleting by id list or by matching ip (very naive).
+app.post('/api/delete-my-locations', (req, res) => {
+  // Expect array of ids to delete (client-driven). In production verify user's identity.
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids_required' });
+
+  const before = locations.length;
+  locations = locations.filter(l => !ids.includes(l.id));
+  saveToDisk();
+  res.json({ ok: true, removed: before - locations.length });
 });
 
-// احراز هویت ساده برای admin (برای دمو فقط)
+// ADMIN AUTH (very simple). In production use env vars and real auth (sessions/JWT/OAuth).
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'changeme';
+
 function requireAdmin(req, res, next) {
   const user = basicAuth(req);
   if (!user || user.name !== ADMIN_USER || user.pass !== ADMIN_PASS) {
@@ -57,28 +95,19 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// صفحه ادمین
+// Admin: return all locations (admin-only)
+app.get('/admin/locations', requireAdmin, (req, res) => {
+  // Return fuller info to admin (including ip/ua)
+  res.json(locations);
+});
+
+// Admin page (static file in public/admin.html) served with requireAdmin check by route wrapper
 app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
-app.get('/admin/locations', requireAdmin, (req, res) => res.json(locations));
 
-// حذف موقعیت بر اساس id (ادمین)
-app.delete('/admin/locations/:id', requireAdmin, (req, res) => {
-  const id = req.params.id;
-  const before = locations.length;
-  locations = locations.filter(l => l.id !== id);
-  save();
-  res.json({ ok: true, removed: before - locations.length });
-});
+// Health
+app.get('/health', (req, res) => res.json({ ok: true }));
 
-// تعریف پورت یک بار
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// صفحه اصلی (root)
-app.get('/', (req, res) => {
-  res.send('Welcome to the server!');
-});
+app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
