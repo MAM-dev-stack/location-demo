@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>کدیاب پستی — پیدا کردن خدمات نزدیک</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    html,body{height:100%;margin:0;font-family:system-ui, Roboto, Arial;}
+    #map{height:100vh}
+    .loc-panel{position:absolute;right:16px;top:16px;z-index:1200;background:#fff;padding:14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12);min-width:260px}
+    .btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600;margin:6px}
+    .btn-allow{background:#16a34a;color:#fff}
+    .btn-deny{background:#ef4444;color:#fff}
+    .note{font-size:13px;color:#555;margin-top:8px}
+    @media (max-width:480px){ .loc-panel{left:8px;right:8px;top:auto;bottom:16px} }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div class="loc-panel" id="locPanel" role="dialog" aria-live="polite">
+    <h3>کدیاب پستی</h3>
+    <p>برای ادامه ارائه خدمات (نمایش نزدیک‌ترین کدپستی و سرویس‌ها)، لطفاً دسترسی موقعیت را بدهید.</p>
+    <button id="allowBtn" class="btn btn-allow">موافقم — اجازه می‌دهم</button>
+    <button id="denyBtn" class="btn btn-deny">الان نه</button>
+    <div class="note" id="statusText"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const SERVER_BASE = ''; // اگر اپ در همان دامنه باشه خالی بذار
+    const map = L.map('map').setView([35.7,51.4], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    const locPanel = document.getElementById('locPanel');
+    const allowBtn = document.getElementById('allowBtn');
+    const denyBtn = document.getElementById('denyBtn');
+    const statusText = document.getElementById('statusText');
+
+    function showStatus(t){ statusText.textContent = t; }
+    let userMarker, accuracyCircle;
+
+    async function sendLocation(lat, lon, acc) {
+      try {
+        const payload = { lat, lon, accuracy: acc, ts: new Date().toISOString() };
+        const res = await fetch(SERVER_BASE + '/api/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) { showStatus('خطا در ارسال موقعیت به سرور.'); return; }
+        showStatus('موقعیت شما ارسال شد ✅');
+      } catch (e) { console.error(e); showStatus('خطا در ارسال موقعیت.'); }
+    }
+
+    function handleSuccess(pos) {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude, acc = pos.coords.accuracy;
+      if (userMarker) userMarker.remove();
+      if (accuracyCircle) accuracyCircle.remove();
+      userMarker = L.marker([lat,lon]).addTo(map).bindPopup('شما اینجا هستی').openPopup();
+      accuracyCircle = L.circle([lat,lon], { radius: acc }).addTo(map);
+      map.setView([lat,lon], 14, { animate: true });
+      showStatus('موقعیت پیدا شد — دقت: ' + Math.round(acc) + ' متر');
+      sendLocation(lat, lon, acc);
+      setTimeout(()=> locPanel.style.display='none', 700);
+    }
+
+    function handleError(err) {
+      console.warn(err);
+      if (err.code === 1) showStatus('دسترسی رد شد — از تنظیمات مرورگر می‌تونی تغییرش بدی.');
+      else if (err.code === 2) showStatus('موقعیت در دسترس نیست.');
+      else if (err.code === 3) showStatus('درخواست تایم‌اوت شد.');
+      else showStatus('خطا در دریافت موقعیت.');
+      setTimeout(()=> locPanel.style.display='none', 1500);
+    }
+
+    allowBtn.addEventListener('click', ()=> {
+      showStatus('در حال درخواست موقعیت از مرورگر...');
+      if (!('geolocation' in navigator)) { showStatus('مرورگرت از Geolocation پشتیبانی نمی‌کنه.'); return; }
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError, { enableHighAccuracy: true, timeout: 10000 });
+    });
+
+    denyBtn.addEventListener('click', ()=> {
+      showStatus('بدون دسترسی هم می‌تونی ادامه بدی؛ اما بعضی خدمات محدود خواهند شد.');
+      setTimeout(()=> locPanel.style.display='none', 800);
+    });
+  </script>
+</body>
+</html>

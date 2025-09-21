@@ -1,0 +1,40 @@
+version: "3.8"
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: kadiyab
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/kadiyab
+      ADMIN_USER: admin
+      ADMIN_PASS: changeme
+      JWT_SECRET: verysecret_change_me
+      PRIVACY_ROUNDING: "3"        # 3 decimal places -> ~100m precision (اختیاری)
+      RETENTION_DAYS: "30"
+      CORS_ORIGIN: "*"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+
+volumes:
+  db-data:

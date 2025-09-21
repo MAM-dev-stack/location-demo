@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ادمین — کدیاب پستی</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>body,html{height:100%;margin:0;font-family:system-ui}#map{height:100vh}.top{position:absolute;left:12px;top:12px;z-index:1200;background:white;padding:8px;border-radius:8px;box-shadow:0 8px 18px rgba(0,0,0,.12)}</style>
+</head>
+<body>
+  <div class="top" id="panel">
+    <div id="loginForm">
+      <input id="user" placeholder="username" />
+      <input id="pass" type="password" placeholder="password" />
+      <button id="loginBtn">ورود</button>
+    </div>
+    <div id="adminTools" style="display:none">
+      <strong>ادمین</strong>
+      <button id="refresh">بروز</button>
+      <button id="logout">خروج</button>
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    let token = localStorage.getItem('kadiyab_admin_token') || null;
+    const map = L.map('map').setView([35.7,51.4], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    const loginForm = document.getElementById('loginForm');
+    const adminTools = document.getElementById('adminTools');
+    const userInput = document.getElementById('user');
+    const passInput = document.getElementById('pass');
+    const loginBtn = document.getElementById('loginBtn');
+    const refreshBtn = document.getElementById('refresh');
+    const logoutBtn = document.getElementById('logout');
+
+    function showAdminUI(show){
+      loginForm.style.display = show ? 'none' : 'block';
+      adminTools.style.display = show ? 'block' : 'none';
+    }
+
+    async function login(){
+      const username = userInput.value;
+      const password = passInput.value;
+      const res = await fetch('/auth/login', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (!res.ok){ alert('login failed'); return; }
+      const j = await res.json();
+      token = j.token;
+      localStorage.setItem('kadiyab_admin_token', token);
+      showAdminUI(true);
+      loadLocations();
+    }
+
+    async function loadLocations(){
+      if (!token){ alert('no token'); return; }
+      const res = await fetch('/admin/locations?limit=1000', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok){
+        alert('error: ' + res.status);
+        if (res.status === 401 || res.status === 403){ localStorage.removeItem('kadiyab_admin_token'); token = null; showAdminUI(false); }
+        return;
+      }
+      const locs = await res.json();
+      if (window._markers) window._markers.forEach(m=>map.removeLayer(m));
+      window._markers = [];
+      locs.forEach(l=>{
+        const m = L.marker([l.lat, l.lon]).addTo(map);
+        m.bindPopup(`id:${l.id}<br>ts:${new Date(l.ts).toLocaleString()}<br>acc:${l.accuracy||'-'}m<br>ip:${l.ip||'-'}`);
+        window._markers.push(m);
+      });
+      if (locs.length) map.setView([locs[0].lat, locs[0].lon], 12);
+    }
+
+    loginBtn.addEventListener('click', login);
+    refreshBtn.addEventListener('click', loadLocations);
+    logoutBtn.addEventListener('click', ()=>{ localStorage.removeItem('kadiyab_admin_token'); token = null; showAdminUI(false); });
+
+    // auto-show UI if token exists
+    if (token){ showAdminUI(true); loadLocations(); }
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+-- db/init.sql
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE TABLE IF NOT EXISTS locations (
+  id UUID PRIMARY KEY,
+  lat DOUBLE PRECISION NOT NULL,
+  lon DOUBLE PRECISION NOT NULL,
+  accuracy DOUBLE PRECISION,
+  geom geometry(Point,4326),
+  ts TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  ua TEXT,
+  ip INET
+);
+
+CREATE INDEX IF NOT EXISTS idx_locations_geom ON locations USING GIST(geom);
