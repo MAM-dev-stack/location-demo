@@ -64,8 +64,11 @@ app.delete('/admin/locations/:id', requireAdmin, (req,res)=>{
   res.json({ ok:true, removed: before - locations.length });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=> console.log('server running on', PORT));
+const PORT = process.env.PORT || 3000; // استفاده از PORT محیطی یا 3000 برای حالت لوکال
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 // صفحه اصلی (root)
 app.get('/', (req, res) => {
   res.send('Welcome to the server!');
