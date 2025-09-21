@@ -1,5 +1,3 @@
-// server.js
-// npm install express cors basic-auth helmet
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -11,7 +9,7 @@ const app = express();
 app.use(helmet());
 app.use(express.json());
 app.use(cors()); // در تولید محدودش کن بر اساس origin
-app.use(express.static('public'));
+app.use(express.static('public')); // مسیر استاتیک برای پوشه public
 
 // تنظیم هدر CSP برای مجاز کردن منابع خارجی
 app.use((req, res, next) => {
@@ -44,21 +42,18 @@ function sanitizeEntry(e) {
     lon: e.lon,
     accuracy: e.accuracy,
     ts: e.ts
-    // ip/ua intentionally withheld from public endpoints; admin endpoint returns more
   };
 }
 
-// PUBLIC API: receive location (must be sent only after explicit consent on client)
+// PUBLIC API: receive location
 app.post('/api/location', (req, res) => {
   const { lat, lon, accuracy, ts, consentToken } = req.body || {};
-
+  
   // Basic safety checks
   if (typeof lat !== 'number' || typeof lon !== 'number') {
     return res.status(400).json({ ok: false, error: 'bad_payload' });
   }
 
-  // Optionally check a consent token or flag from client if you implement one.
-  // Here we just trust client indicates consent; production: validate session/auth + server-side consent record.
   const entry = {
     id: Date.now() + '-' + Math.floor(Math.random() * 10000),
     lat,
@@ -75,10 +70,8 @@ app.post('/api/location', (req, res) => {
   res.status(201).json({ ok: true, id: entry.id });
 });
 
-// PUBLIC API: delete all locations for a user id (client must supply id or token).
-// For demo we allow deleting by id list or by matching ip (very naive).
+// PUBLIC API: delete all locations for a user id
 app.post('/api/delete-my-locations', (req, res) => {
-  // Expect array of ids to delete (client-driven). In production verify user's identity.
   const { ids } = req.body || {};
   if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids_required' });
 
@@ -88,7 +81,7 @@ app.post('/api/delete-my-locations', (req, res) => {
   res.json({ ok: true, removed: before - locations.length });
 });
 
-// ADMIN AUTH (very simple). In production use env vars and real auth (sessions/JWT/OAuth).
+// Admin authorization (basic auth)
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'changeme';
 
@@ -101,18 +94,17 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Admin: return all locations (admin-only)
+// Admin route: return all locations
 app.get('/admin/locations', requireAdmin, (req, res) => {
-  // Return fuller info to admin (including ip/ua)
   res.json(locations);
 });
 
-// Admin page (static file in public/admin.html) served with requireAdmin check by route wrapper
+// Admin page route
 app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Health
+// Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;

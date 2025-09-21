@@ -6,12 +6,12 @@
   <title>کدیاب پستی — پیدا کردن خدمات نزدیک</title>
 
   <!-- لینک به فایل CSS Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/css/leaflet.css" />
 
   <!-- لینک به فایل CSS برای استفاده در سایت -->
-  <link href="style.css" rel="stylesheet" />
+  <link href="/style.css" rel="stylesheet" />
 
-  <!-- لینک به فونت فارسی (اختیاری) -->
+  <!-- لینک به فونت فارسی -->
   <link href="https://fonts.googleapis.com/css2?family=Vazir&display=swap" rel="stylesheet">
 
   <style>
@@ -67,10 +67,8 @@
 </head>
 <body>
 
-  <!-- نقشه نمایش موقعیت -->
   <div id="map"></div>
 
-  <!-- پنل دسترسی -->
   <div class="loc-panel" id="locPanel" role="dialog" aria-live="polite">
     <h3>کدیاب پستی</h3>
     <p>برای ادامه ارائه خدمات (نمایش نزدیک‌ترین کدپستی و سرویس‌ها)، لطفاً دسترسی موقعیت را بدهید.</p>
@@ -80,82 +78,10 @@
   </div>
 
   <!-- لینک به فایل JS Leaflet -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/leaflet.js"></script>
   
   <!-- فایل JS مخصوص اپلیکیشن شما -->
-  <script src="app.js"></script>
-
-  <script>
-    const SERVER_BASE = ''; // اگر اپ در همان دامنه باشه خالی بذار
-
-    const map = L.map('map').setView([35.7, 51.4], 5);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    const locPanel = document.getElementById('locPanel');
-    const allowBtn = document.getElementById('allowBtn');
-    const denyBtn = document.getElementById('denyBtn');
-    const statusText = document.getElementById('statusText');
-
-    function showStatus(t) {
-      statusText.textContent = t;
-    }
-
-    let userMarker, accuracyCircle;
-
-    async function sendLocation(lat, lon, acc) {
-      try {
-        const payload = { lat, lon, accuracy: acc, ts: new Date().toISOString() };
-        const res = await fetch(SERVER_BASE + '/api/location', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-          showStatus('خطا در ارسال موقعیت به سرور.');
-          return;
-        }
-        showStatus('موقعیت شما ارسال شد ✅');
-      } catch (e) {
-        console.error(e);
-        showStatus('خطا در ارسال موقعیت.');
-      }
-    }
-
-    function handleSuccess(pos) {
-      const lat = pos.coords.latitude, lon = pos.coords.longitude, acc = pos.coords.accuracy;
-      if (userMarker) userMarker.remove();
-      if (accuracyCircle) accuracyCircle.remove();
-      userMarker = L.marker([lat, lon]).addTo(map).bindPopup('شما اینجا هستید').openPopup();
-      accuracyCircle = L.circle([lat, lon], { radius: acc }).addTo(map);
-      map.setView([lat, lon], 14, { animate: true });
-      showStatus('موقعیت پیدا شد — دقت: ' + Math.round(acc) + ' متر');
-      sendLocation(lat, lon, acc);
-      setTimeout(() => locPanel.style.display = 'none', 700);
-    }
-
-    function handleError(err) {
-      console.warn(err);
-      if (err.code === 1) showStatus('دسترسی رد شد — از تنظیمات مرورگر می‌تونی تغییرش بدی.');
-      else if (err.code === 2) showStatus('موقعیت در دسترس نیست.');
-      else if (err.code === 3) showStatus('درخواست تایم‌اوت شد.');
-      else showStatus('خطا در دریافت موقعیت.');
-      setTimeout(() => locPanel.style.display = 'none', 1500);
-    }
-
-    allowBtn.addEventListener('click', () => {
-      showStatus('در حال درخواست موقعیت از مرورگر...');
-      if (!('geolocation' in navigator)) {
-        showStatus('مرورگرت از Geolocation پشتیبانی نمی‌کنه.');
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(handleSuccess, handleError, { enableHighAccuracy: true, timeout: 10000 });
-    });
-
-    denyBtn.addEventListener('click', () => {
-      showStatus('بدون دسترسی هم می‌توانید ادامه دهید؛ اما بعضی خدمات محدود خواهند شد.');
-      setTimeout(() => locPanel.style.display = 'none', 800);
-    });
-  </script>
+  <script src="/app.js"></script>
 
 </body>
 </html>
