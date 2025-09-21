@@ -20,7 +20,9 @@ app.use((req, res, next) => {
     script-src 'self' https://unpkg.com;
     style-src 'self' https://fonts.googleapis.com;
     font-src https://fonts.gstatic.com;
-    img-src 'self' https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://unpkg.com;
+    img-src 'self' https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://unpkg.com data:;
+    connect-src 'self';
+    manifest-src 'self';
   `);
   next();
 });
