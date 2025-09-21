@@ -1,4 +1,5 @@
 const SERVER_BASE = ''; // اگر اپ در همان دامنه باشه خالی بذار
+
 const map = L.map('map').setView([35.7, 51.4], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 

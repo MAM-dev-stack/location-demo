@@ -1,3 +1,5 @@
+// server.js
+// npm install express cors basic-auth helmet
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -6,20 +8,16 @@ const helmet = require('helmet');
 const cors = require('cors');
 
 const app = express();
-
-// تنظیمات امنیتی برای CSP (اضافه کردن هدر)
-app.use((req, res, next) => {
-  res.setHeader("Content-Security-Policy", "script-src 'self' https://unpkg.com;");
-  next();
-});
-
-// استفاده از helmet برای سایر تنظیمات امنیتی
 app.use(helmet());
-
-// سایر میدل‌ویرها
 app.use(express.json());
 app.use(cors()); // در تولید محدودش کن بر اساس origin
 app.use(express.static('public'));
+
+// تنظیم هدر CSP برای مجاز کردن منابع خارجی
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;");
+  next();
+});
 
 const DATA_FILE = path.join(__dirname, 'locations.json');
 let locations = [];
@@ -46,6 +44,7 @@ function sanitizeEntry(e) {
     lon: e.lon,
     accuracy: e.accuracy,
     ts: e.ts
+    // ip/ua intentionally withheld from public endpoints; admin endpoint returns more
   };
 }
 
@@ -58,6 +57,8 @@ app.post('/api/location', (req, res) => {
     return res.status(400).json({ ok: false, error: 'bad_payload' });
   }
 
+  // Optionally check a consent token or flag from client if you implement one.
+  // Here we just trust client indicates consent; production: validate session/auth + server-side consent record.
   const entry = {
     id: Date.now() + '-' + Math.floor(Math.random() * 10000),
     lat,
@@ -72,6 +73,19 @@ app.post('/api/location', (req, res) => {
   saveToDisk();
 
   res.status(201).json({ ok: true, id: entry.id });
+});
+
+// PUBLIC API: delete all locations for a user id (client must supply id or token).
+// For demo we allow deleting by id list or by matching ip (very naive).
+app.post('/api/delete-my-locations', (req, res) => {
+  // Expect array of ids to delete (client-driven). In production verify user's identity.
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids_required' });
+
+  const before = locations.length;
+  locations = locations.filter(l => !ids.includes(l.id));
+  saveToDisk();
+  res.json({ ok: true, removed: before - locations.length });
 });
 
 // ADMIN AUTH (very simple). In production use env vars and real auth (sessions/JWT/OAuth).
@@ -89,6 +103,7 @@ function requireAdmin(req, res, next) {
 
 // Admin: return all locations (admin-only)
 app.get('/admin/locations', requireAdmin, (req, res) => {
+  // Return fuller info to admin (including ip/ua)
   res.json(locations);
 });
 
@@ -97,9 +112,8 @@ app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Health check endpoint
+// Health
 app.get('/health', (req, res) => res.json({ ok: true }));
 
-// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
