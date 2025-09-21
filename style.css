@@ -1,0 +1,44 @@
+/* style.css */
+
+/* تنظیم فونت برای کل بدنه صفحه */
+body {
+  font-family: 'Vazir', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+}
+
+/* تنظیم فونت برای عنوان‌ها */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Vazir', sans-serif;
+  font-weight: bold;
+}
+
+/* استایل پاراگراف‌ها */
+p {
+  font-family: 'Vazir', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* استایل دکمه‌ها */
+button {
+  font-family: 'Vazir', sans-serif;
+  padding: 10px 20px;
+  background-color: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* تغییر رنگ دکمه‌ها در حالت hover */
+button:hover {
+  background-color: #15803d;
+}
+
+/* استایل نقشه (مثال) */
+#map {
+  height: 100vh;
+}
